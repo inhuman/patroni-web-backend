@@ -1,0 +1,70 @@
+{
+  "variables": {
+    "docker_image": "{{env `REGISTRY_IMAGE`}}",
+    "docker_tag": "{{env `DOCKER_TAG`}}",
+    "ci_user": "{{env `REGISTRY_USER`}}",
+    "ci_pass": "{{env `REGISTRY_PASSWORD`}}",
+    "ci_server": "{{env `REGISTRY`}}",
+    "ci_token": "{{env `CI_JOB_TOKEN`}}",
+    "binary": "{{env `BINARY_NAME`}}"
+  },
+  "builders": [
+    {
+      "type": "docker",
+      "image": "centos",
+      "commit": "true",
+      "privileged": "true",
+      "login": "true",
+      "login_username": "{{user `ci_user`}}",
+      "login_password": "{{user `ci_pass`}}",
+      "login_server": "{{user `ci_server`}}",
+      "run_command": ["-d", "-i", "-t", "{{.Image}}", "/bin/sh"],
+      "changes": [
+        "ENV PB_VERSION {{user `docker_tag`}}"
+      ]
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "mkdir -p /opt/{{user `binary`}}/bin/"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "bin/{{user `binary`}}",
+      "destination": "/opt/{{user `binary`}}/bin/"
+    }
+  ],
+  "post-processors": [
+    [
+      {
+        "type": "docker-tag",
+        "repository": "{{user `docker_image`}}",
+        "tag": "{{user `docker_tag`}}"
+      },
+      {
+        "type": "docker-push",
+        "login": "true",
+        "login_username": "{{user `ci_user`}}",
+        "login_password": "{{user `ci_pass`}}",
+        "login_server": "{{user `ci_server`}}"
+      }
+    ],
+    [
+      {
+        "type": "docker-tag",
+        "repository": "{{user `docker_image`}}",
+        "tag": "latest"
+      },
+      {
+        "type": "docker-push",
+        "login": "true",
+        "login_username": "{{user `ci_user`}}",
+        "login_password": "{{user `ci_pass`}}",
+        "login_server": "{{user `ci_server`}}"
+      }
+    ]
+  ]
+}
